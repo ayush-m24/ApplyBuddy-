@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import mongoose from 'mongoose';
+import fs from 'fs';
 import Job from './models/Job.js';
 import User from './models/User.js';
 import { sendApplicationMail } from './gmail.js';
@@ -16,6 +17,11 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ensure uploads directory exists for storing user CVs
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
 
 const upload = multer({
   dest: 'uploads/',
@@ -70,11 +76,14 @@ app.post('/scrape', auth, requireSubscription, async (req, res) => {
 });
 
 app.post('/api/jobs/scrape', auth, requireSubscription, async (req, res) => {
-  const { keywords = '', location = '' } = req.body || {};
-  const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:5000';
+  const { title = '', location = '' } = req.body || {};
+  const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:8000';
   try {
-    const params = new URLSearchParams({ keywords, location }).toString();
-    const resp = await fetch(`${scraperUrl}/scrape?${params}`);
+    const resp = await fetch(`${scraperUrl}/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, location })
+    });
     const jobs = await resp.json();
     const saved = await Promise.all(
       jobs.map((job) =>
