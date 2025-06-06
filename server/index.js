@@ -71,10 +71,13 @@ app.post('/scrape', auth, requireSubscription, async (req, res) => {
 
 app.post('/api/jobs/scrape', auth, requireSubscription, async (req, res) => {
   const { keywords = '', location = '' } = req.body || {};
-  const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:5000';
+  const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:8000';
   try {
-    const params = new URLSearchParams({ keywords, location }).toString();
-    const resp = await fetch(`${scraperUrl}/scrape?${params}`);
+    const resp = await fetch(`${scraperUrl}/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: keywords, location }),
+    });
     const jobs = await resp.json();
     const saved = await Promise.all(
       jobs.map((job) =>
