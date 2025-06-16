@@ -70,12 +70,17 @@ app.post('/scrape', auth, requireSubscription, async (req, res) => {
 });
 
 app.post('/api/jobs/scrape', auth, requireSubscription, async (req, res) => {
-  const { keywords = '', location = '' } = req.body || {};
-  const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:5000';
+  // Pass the entire req.body to the scraper, which expects { title, location, keywords, max_results }
+  // Defaulting to empty object if req.body is nullish to prevent errors during stringify
+  const payload = req.body || {};
+  const scraperUrl = process.env.SCRAPER_URL || 'http://localhost:8000'; // Corrected port
   try {
-    const params = new URLSearchParams({ keywords, location }).toString();
-    const resp = await fetch(`${scraperUrl}/scrape?${params}`);
-    const jobs = await resp.json();
+    const response = await fetch(`${scraperUrl}/scrape`, { // URL without query params
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload) // Send parameters in the body
+    });
+    const jobs = await response.json(); // Use response from the fetch call
     const saved = await Promise.all(
       jobs.map((job) =>
         Job.create({
